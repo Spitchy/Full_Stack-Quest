@@ -14,8 +14,8 @@ paths:
           required: false
           schema: { type: string, enum: [season, today], default: season }
           description: >
-            season = XP cumulée sur la saison en cours.
-            today = XP gagnée aujourd'hui (journée Europe/Paris).
+            season = Expérience cumulée sur la saison en cours.
+            today = Expérience gagnée aujourd'hui (journée Europe/Paris).
         - name: page
           in: query
           required: false

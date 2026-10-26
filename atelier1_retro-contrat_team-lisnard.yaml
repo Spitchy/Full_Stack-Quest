@@ -1,0 +1,224 @@
+openapi: 3.0.3
+info:
+  title: Hub — API Classement
+  version: 1.0.0
+  description: >
+    Contrat d'interface pour l'écran Classement du Hub.
+    Établi en binôme Front/Back pour servir de référence unique d'implémentation.
+
+    PRINCIPES CLÉS TRANCHÉS :
+    1. Tri : Fixé et garanti côté serveur (XP décroissant). Aucun paramètre de tri côté Front.
+    2. Égalités : Rangs stricts et continus (1, 2, 3...). En cas d'XP identique (ex: Dylan et Dylan_Test à 0 XP),
+       le départage se fait par la date d'obtention de l'XP (premier arrivé, premier servi).
+    3. Joueur sans équipe : Le champ 'equipe' est TOUJOURS présent mais vaut 'null'. Le Front est responsable d'afficher '—'.
+    4. Top 3 : La coloration dorée des 3 premiers relève exclusivement de la logique d'affichage du Front (rang <= 3).
+    5. Erreurs : Format unique et standardisé pour tous les codes HTTP d'erreur.
+
+paths:
+  /api/v1/classement:
+    get:
+      summary: Classement des joueurs
+      description: >
+        Retourne la liste ordonnée et paginée des joueurs pour la période sélectionnée.
+      
+      # Sécurité : Un token Bearer est requis pour identifier l'appelant (cohérent avec le contrat de plateforme).
+      security:
+        - playerToken: []
+
+      parameters:
+        # --- FILTRE DE PÉRIODE ---
+        # Correspond directement aux deux onglets "Saison" et "Aujourd'hui" en haut à droite de l'écran.
+        - name: periode
+          in: query
+          required: true
+          description: Période du classement affiché. Obligatoire car l'un des deux onglets est toujours actif.
+          schema:
+            type: string
+            enum: [saison, aujourd_hui]
+          example: saison
+
+        # --- PAGINATION (Choix : Pagination par page) ---
+        # Permet de ne pas charger inutilement des milliers de lignes et d'anticiper le scroll infini / boutons de page.
+        - name: page
+          in: query
+          required: false
+          description: Numéro de page à récupérer (commence à 1). Valeur par défaut = 1.
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          example: 1
+
+        - name: limite
+          in: query
+          required: false
+          description: Nombre d'entrées maximum par page (défaut = 20, max = 100).
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          example: 20
+
+      responses:
+        # --- SUCCÈS (200 OK) ---
+        "200":
+          description: Classement retourné avec succès pour la période demandée.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClassementResponse"
+
+        # --- ERREURS STANDARDISÉES ---
+        # Toutes les réponses d'erreur partagent le même schéma 'ApiError' pour faciliter la gestion côté Front.
+        "400":
+          description: Paramètre de requête invalide (ex: période inconnue, page négative).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+              example:
+                code: "INVALID_QUERY_PARAMETER"
+                message: "La période doit être 'saison' ou 'aujourd_hui'."
+
+        "401":
+          description: Jeton d'authentification manquant, invalide ou expiré.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+              example:
+                code: "INVALID_TOKEN"
+                message: "Le jeton d'authentification est manquant ou invalide."
+
+        "429":
+          description: Limite d'appels atteinte (Rate limiting).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+              example:
+                code: "RATE_LIMITED"
+                message: "Trop de requêtes effectuées. Veuillez réessayer plus tard."
+
+components:
+  securitySchemes:
+    playerToken:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Jeton JWT transmis dans l'en-tête Authorization (Bearer <token>).
+
+  schemas:
+    # --- ENVELOPPE DE RÉPONSE GLOBALE ---
+    ClassementResponse:
+      type: object
+      required: [periode, pagination, entrees]
+      properties:
+        periode:
+          type: string
+          enum: [saison, aujourd_hui]
+          description: Rappel de la période pour laquelle les données ont été calculées.
+          example: saison
+        pagination:
+          $ref: "#/components/schemas/PaginationMeta"
+        entrees:
+          type: array
+          description: Liste ordonnée des joueurs (ordre strict 1..N).
+          items:
+            $ref: "#/components/schemas/EntreeClassement"
+
+    # --- MÉTADONNÉES DE PAGINATION ---
+    # Fournit au Front tout le nécessaire pour calculer l'état de l'affichage (bouton suivant désactivé, nombre de pages, etc.).
+    PaginationMeta:
+      type: object
+      required: [page, limite, totalElements, totalPages]
+      properties:
+        page:
+          type: integer
+          minimum: 1
+          description: Page courante.
+          example: 1
+        limite:
+          type: integer
+          minimum: 1
+          description: Nombre d'éléments demandés par page.
+          example: 20
+        totalElements:
+          type: integer
+          minimum: 0
+          description: Nombre total de joueurs classés pour cette période.
+          example: 11
+        totalPages:
+          type: integer
+          minimum: 1
+          description: Nombre total de pages disponibles.
+          example: 1
+
+    # --- LIGNE DE CLASSEMENT (L'ÉLÉMENT D'UN JOUEUR) ---
+    EntreeClassement:
+      type: object
+      # Tous les champs sont requis dans le JSON pour assurer une structure prévisible sans champs manquants (undefined).
+      required: [rang, joueurId, pseudo, equipe, niveau, xp]
+      properties:
+        # DÉCISION ÉGALITÉ & RANG :
+        # Le rang est un entier strict (1, 2, 3...). Comme visible sur l'écran avec Dylan (10) et Dylan_Test (11),
+        # il n'y a pas d'ex æquo "10 et 10". Le serveur applique un tri stable : XP DESC, puis dateAtteinte ASC.
+        rang:
+          type: integer
+          minimum: 1
+          description: Position au classement (1 pour le premier).
+          example: 1
+
+        # DÉCISION IDENTIFIANT :
+        # Indispensable pour le Front : sert de clé unique (ex: key en React/Vue) et permet de rediriger
+        # vers le profil du joueur au clic, même en cas d'homonymes.
+        joueurId:
+          type: string
+          pattern: "^p_[0-9]+$"
+          description: Identifiant technique immuable du joueur.
+          example: "p_1042"
+
+        # DÉCISION PSEUDO :
+        # Texte affiché dans la colonne "Joueur".
+        pseudo:
+          type: string
+          minLength: 1
+          description: Pseudo affiché à l'écran.
+          example: "Ishak MESSAOUDI"
+
+        # DÉCISION JOUEUR SANS ÉQUIPE :
+        # 'nullable: true' garantit que la propriété existe toujours dans le JSON.
+        # Si le joueur n'a pas d'équipe, la valeur est null. C'est le Front qui affiche "—".
+        equipe:
+          type: string
+          nullable: true
+          description: Nom de l'équipe du joueur, ou null s'il n'en a pas.
+          example: null
+
+        niveau:
+          type: integer
+          minimum: 1
+          description: Niveau actuel du joueur.
+          example: 3
+
+        xp:
+          type: integer
+          minimum: 0
+          description: Nombre de points d'expérience sur la période.
+          example: 533
+
+    # --- FORMAT UNIQUE DES ERREURS ---
+    # Un format unique permet au Front d'avoir un intercepteur d'erreur générique.
+    ApiError:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          description: Code d'erreur machine compréhensible (ex: INVALID_QUERY_PARAMETER, UNAUTHORIZED).
+          example: "INVALID_QUERY_PARAMETER"
+        message:
+          type: string
+          description: Message explicatif en langage naturel pour le débogage ou l'utilisateur.
+          example: "La période demandée est invalide."
