@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0b0d1c" />
+    <title>Hub — Classement</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Jersey+10&family=Pixelify+Sans:wght@400;500;600&family=Silkscreen&display=swap"
+    />
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <div class="screen">
+      <header class="top">
+        <div class="brand">
+          <p class="kicker"><span class="kicker-dot" aria-hidden="true"></span>Hub</p>
+          <h1 class="title">Classement</h1>
+        </div>
+
+        <div class="tabs" role="tablist" aria-label="Période du classement">
+          <button class="tab" role="tab" id="tab-saison" data-periode="saison" aria-selected="true" aria-controls="board">
+            Saison
+          </button>
+          <button class="tab" role="tab" id="tab-aujourd_hui" data-periode="aujourd_hui" aria-selected="false" aria-controls="board" tabindex="-1">
+            Aujourd'hui
+          </button>
+        </div>
+      </header>
+
+      <main class="window" id="board" role="tabpanel" aria-labelledby="tab-saison">
+        <div class="window-bar">
+          <span class="window-label" id="board-label">Saison</span>
+          <span class="loader" aria-hidden="true"><i></i><i></i><i></i></span>
+        </div>
+
+        <table class="board" id="table" role="table" aria-labelledby="board-label">
+          <thead role="rowgroup">
+            <tr role="row">
+              <th role="columnheader" scope="col" class="c-rank">Rang</th>
+              <th role="columnheader" scope="col" class="c-name">Joueur</th>
+              <th role="columnheader" scope="col" class="c-team">Équipe</th>
+              <th role="columnheader" scope="col" class="c-level">Niveau</th>
+              <th role="columnheader" scope="col" class="c-xp">XP</th>
+            </tr>
+          </thead>
+          <tbody id="rows" role="rowgroup"></tbody>
+        </table>
+
+        <div class="dialog" id="dialog" hidden>
+          <p class="dialog-plate" id="dialog-code"></p>
+          <p class="dialog-text" id="dialog-text"></p>
+          <span class="dialog-caret" aria-hidden="true"></span>
+        </div>
+
+        <nav class="pager" aria-label="Pagination">
+          <button class="btn btn-arrow" id="prev" type="button" aria-label="Page précédente">
+            <svg viewBox="0 0 5 7" aria-hidden="true"><path d="M4 0h1v7H4V6H3V5H2V4H1V3h1V2h1V1h1z" /></svg>
+            <span>Préc.</span>
+          </button>
+          <p class="page-indicator" id="page-indicator">Page <b>--</b> / <b>--</b></p>
+          <button class="btn btn-arrow" id="next" type="button" aria-label="Page suivante">
+            <span>Suiv.</span>
+            <svg viewBox="0 0 5 7" aria-hidden="true"><path d="M0 0h1v1h1v1h1v1h1v1H3v1H2v1H1v1H0z" /></svg>
+          </button>
+        </nav>
+      </main>
+
+      <p class="sr-only" id="status" aria-live="polite"></p>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

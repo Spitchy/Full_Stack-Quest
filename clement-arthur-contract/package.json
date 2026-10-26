@@ -1,0 +1,18 @@
+{
+  "name": "clement-arthur-contract",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Hub — écran Classement, implémentation full stack du contrat atelier1_retro-contrat_team-lisnard.yaml",
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "token": "npm run token -w backend -- --write-env",
+    "dev": "npm run token && concurrently -k -n api,web -c yellow,cyan \"npm run dev -w backend\" \"npm run dev -w frontend\"",
+    "test": "npm test -w backend"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}
